@@ -1,3 +1,3 @@
 turns from  to  chess 
-1     3 7   3 6   i
-2     6 3   6 4   a
+1     5 7   5 6   i
+2     5 3   5 4   a
