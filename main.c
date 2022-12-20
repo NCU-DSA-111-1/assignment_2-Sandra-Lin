@@ -6,7 +6,7 @@ void newboard();//產生一個全新棋盤
 void printboard();//印出棋盤
 void movechess();//移動棋子
 void regret();//悔棋
-void push();// push stack
+void push(int start1,int start2,int end1,int end2);// push stack
 int pop();//pop stack
 FILE *new_game;//儲存新棋盤的檔案
 
