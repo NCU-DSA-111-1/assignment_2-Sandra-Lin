@@ -2,13 +2,16 @@
 #include<stdlib.h>
 #include<math.h>
 #include<stddef.h>
+#include<unistd.h>
 void newboard();//產生一個全新棋盤
 void printboard();//印出棋盤
 void movechess();//移動棋子
 void regret();//悔棋
 void push(int start1,int start2,int end1,int end2);// push stack
+void read_board();//讀舊棋譜
 int pop();//pop stack
 FILE *new_game;//儲存新棋盤的檔案
+FILE *old_game;//載入舊棋盤
 
 struct node{
     char start_chess;
@@ -19,28 +22,98 @@ struct node{
 }*stack=NULL;
 
 typedef struct node NODE;
-int i,j,end,top=-1;
+int i, j, end, king=0, top=-1;
 int turn=1;//計算回合數，奇數時玩家x移動，偶數時玩家y移動
 int origin_row,origin_column,new_row,new_column;//coordinates of the chess
 char board[10][10]={0};//棋盤
+NODE *inverse(NODE *list);//inverse of linked list
 
-int main()
+int main(int argc,char **argv)
 {
-    if((new_game=fopen("shogi.txt","w+"))!=NULL)
-        fprintf(new_game,"%-6s%-6s%-4s%-6s\n","turns","from","to","chess");
-    
-    newboard();
-    printboard();
+    int opt=0;
 
-    while(1)
+    while((opt=getopt(argc,argv,"ns:l:"))!=-1)
     {
-        movechess();
-        if(end==-1)
-            break;
-        printboard();
+        switch(opt)
+        {
+            case'n':
+                break;
+            case's':
+                if((new_game=fopen("shogi.txt","w+"))!=NULL)
+                    fprintf(new_game,"%-6s%-6s%-4s%-6s\n","turns","from","to","chess");
+    
+                newboard();
+                printboard();
+
+                while(1)
+                {
+                    movechess();
+
+                    if(end==-1)
+                        break;
+                    
+                    if(king==1)
+                    {
+                        printboard();
+
+                        if(96 < stack->start_chess && stack->start_chess < 105)
+                            printf("Player y win!\n");
+                        if(104 < stack->start_chess && stack->start_chess < 113)
+                            printf("Player x win!\n");
+
+                        fclose(new_game);
+                        break;
+                    }
+                    printboard();
+                }
+                break;
+
+            case'l':
+                if((old_game=fopen("shogi.txt","r"))!=NULL)
+                    read_board();
+                break;
+        }
+    }
+    
+    return 0;
+}
+
+void read_board()
+{
+    NODE *read=NULL,*temp,*front=NULL,*fnext=NULL,*list;
+    list=(NODE*)malloc(sizeof(NODE));
+    read=(NODE*)malloc(sizeof(NODE));
+
+    fseek(old_game,22,SEEK_SET);//游標移到檔案第一列最後
+    while(!feof(old_game))
+    {
+        temp=(NODE*)malloc(sizeof(NODE));
+
+        fseek(old_game,7,SEEK_CUR);//游標移到from
+        fscanf(old_game,"%d %d %d %d %c",&temp->start[1],&temp->start[0],&temp->end[1],&temp->end[0],&temp->end_chess);
+        temp->next=NULL;
+        temp->next=read;
+        read=temp;
+    }
+    fclose(old_game);
+
+    list=read;
+    while(list)//inverse of the list
+    {
+        fnext=front;
+        front=list;
+        list=list->next;
+        front->next=fnext;
     }
 
-    return 0;
+    stack=front;
+    newboard();
+    while(stack->next!=NULL)//重播下棋過程
+    {
+        pop();
+        printboard();
+        printf("\n");
+    }
 }
 
 void push(int start1,int start2,int end1,int end2)
@@ -229,6 +302,9 @@ void movechess()
         {
             if((104<board[new_row][new_column]) && (board[new_row][new_column]<113))//吃
             {
+                if(board[new_row][new_column]=='n')//吃到王
+                    king=1;
+                
                 push(origin_row,origin_column+1,new_row,new_column+1);
                 fprintf(new_game,"%-6d%-2d%-2d%3d%2d%4c\n",turn,origin_column+1,origin_row,new_column+1,new_row,board[origin_row][origin_column]);
                 board[new_row][new_column]=board[origin_row][origin_column];
@@ -264,6 +340,9 @@ void movechess()
         {
             if((96<board[new_row][new_column]) && (board[new_row][new_column]<105))//吃
             {
+                if(board[new_row][new_column]=='f')//吃到王
+                    king=1;
+                
                 push(origin_row,origin_column+1,new_row,new_column+1);
                 fprintf(new_game,"%-6d%-2d%-2d%3d%2d%4c\n",turn,origin_column+1,origin_row,new_column+1,new_row,board[origin_row][origin_column]);
                 board[new_row][new_column]=board[origin_row][origin_column];
@@ -308,6 +387,9 @@ void movechess()
         {
             if((104<board[new_row][new_column]) && (board[new_row][new_column]<113))//吃
             {
+                if(board[new_row][new_column]=='n')//吃到王
+                    king=1;
+                
                 push(origin_row,origin_column+1,new_row,new_column+1);
                 fprintf(new_game,"%-6d%-2d%-2d%3d%2d%4c\n",turn,origin_column+1,origin_row,new_column+1,new_row,board[origin_row][origin_column]);
                 board[new_row][new_column]=board[origin_row][origin_column];
@@ -352,6 +434,9 @@ void movechess()
         {
             if((96<board[new_row][new_column]) && (board[new_row][new_column]<105))//吃
             {
+                if(board[new_row][new_column]=='f')//吃到王
+                    king=1;
+
                 push(origin_row,origin_column+1,new_row,new_column+1);
                 fprintf(new_game,"%-6d%-2d%-2d%3d%2d%4c\n",turn,origin_column+1,origin_row,new_column+1,new_row,board[origin_row][origin_column]);
                 board[new_row][new_column]=board[origin_row][origin_column];
@@ -388,6 +473,9 @@ void movechess()
         {
             if((104<board[new_row][new_column]) && (board[new_row][new_column]<113))//吃
             {
+                if(board[new_row][new_column]=='n')//吃到王
+                    king=1;
+                
                 push(origin_row,origin_column+1,new_row,new_column+1);
                 fprintf(new_game,"%-6d%-2d%-2d%3d%2d%4c\n",turn,origin_column+1,origin_row,new_column+1,new_row,board[origin_row][origin_column]);
                 board[new_row][new_column]=board[origin_row][origin_column];
@@ -423,6 +511,9 @@ void movechess()
         {
             if((96<board[new_row][new_column]) && (board[new_row][new_column]<105))//吃
             {
+                if(board[new_row][new_column]=='f')//吃到王
+                    king=1;
+                
                 push(origin_row,origin_column+1,new_row,new_column+1);
                 fprintf(new_game,"%-6d%-2d%-2d%3d%2d%4c\n",turn,origin_column+1,origin_row,new_column+1,new_row,board[origin_row][origin_column]);
                 board[new_row][new_column]=board[origin_row][origin_column];
@@ -458,6 +549,9 @@ void movechess()
         {
             if((104<board[new_row][new_column]) && (board[new_row][new_column]<113))//吃
             {
+                if(board[new_row][new_column]=='n')//吃到王
+                    king=1;
+                
                 push(origin_row,origin_column+1,new_row,new_column+1);
                 fprintf(new_game,"%-6d%-2d%-2d%3d%2d%4c\n",turn,origin_column+1,origin_row,new_column+1,new_row,board[origin_row][origin_column]);
                 board[new_row][new_column]=board[origin_row][origin_column];
@@ -493,6 +587,9 @@ void movechess()
         {
             if((96<board[new_row][new_column]) && (board[new_row][new_column]<105))//吃
             {
+                if(board[new_row][new_column]=='f')//吃到王
+                    king=1;
+                
                 push(origin_row,origin_column+1,new_row,new_column+1);
                 fprintf(new_game,"%-6d%-2d%-2d%3d%2d%4c\n",turn,origin_column+1,origin_row,new_column+1,new_row,board[origin_row][origin_column]);
                 board[new_row][new_column]=board[origin_row][origin_column];
@@ -528,6 +625,9 @@ void movechess()
         {
             if((104<board[new_row][new_column]) && (board[new_row][new_column]<113))//吃
             {
+                if(board[new_row][new_column]=='n')//吃到王
+                    king=1;
+                
                 push(origin_row,origin_column+1,new_row,new_column+1);
                 fprintf(new_game,"%-6d%-2d%-2d%3d%2d%4c\n",turn,origin_column+1,origin_row,new_column+1,new_row,board[origin_row][origin_column]);
                 board[new_row][new_column]=board[origin_row][origin_column];
@@ -559,9 +659,12 @@ void movechess()
         }//判斷移動正確
 
         if(board[new_row][new_column]!=0)//if board[new_row][new_column]有棋子
-        {
+        {   
             if((96<board[new_row][new_column]) && (board[new_row][new_column]<105))//吃
             {
+                if(board[new_row][new_column]=='f')//吃到王
+                    king=1;
+                
                 push(origin_row,origin_column+1,new_row,new_column+1);
                 fprintf(new_game,"%-6d%-2d%-2d%3d%2d%4c\n",turn,origin_column+1,origin_row,new_column+1,new_row,board[origin_row][origin_column]);
                 board[new_row][new_column]=board[origin_row][origin_column];
@@ -599,6 +702,9 @@ void movechess()
             {
                 if((104<board[new_row][new_column]) && (board[new_row][new_column]<113))//吃
                 {
+                    if(board[new_row][new_column]=='n')//吃到王
+                        king=1;
+                    
                     push(origin_row,origin_column+1,new_row,new_column+1);
                     fprintf(new_game,"%-6d%-2d%-2d%3d%2d%4c\n",turn,origin_column+1,origin_row,new_column+1,new_row,board[origin_row][origin_column]);
                     board[new_row][new_column]=board[origin_row][origin_column];
@@ -616,6 +722,9 @@ void movechess()
             {
                 if((96<board[new_row][new_column]) && (board[new_row][new_column]<105))//吃
                 {
+                    if(board[new_row][new_column]=='f')//吃到王
+                        king=1;
+                    
                     push(origin_row,origin_column+1,new_row,new_column+1);
                     fprintf(new_game,"%-6d%-2d%-2d%3d%2d%4c\n",turn,origin_column+1,origin_row,new_column+1,new_row,board[origin_row][origin_column]);
                     board[new_row][new_column]=board[origin_row][origin_column];
@@ -702,6 +811,9 @@ void movechess()
             {
                 if((104<board[new_row][new_column]) && (board[new_row][new_column]<113))//吃
                 {
+                    if(board[new_row][new_column]=='n')//吃到王
+                        king=1;
+                    
                     push(origin_row,origin_column+1,new_row,new_column+1);
                     fprintf(new_game,"%-6d%-2d%-2d%3d%2d%4c\n",turn,origin_column+1,origin_row,new_column+1,new_row,board[origin_row][origin_column]);
                     board[new_row][new_column]=board[origin_row][origin_column];
@@ -719,6 +831,9 @@ void movechess()
             {
                 if((96<board[new_row][new_column]) && (board[new_row][new_column]<105))//吃
                 {
+                    if(board[new_row][new_column]=='f')//吃到王
+                        king=1;
+                    
                     push(origin_row,origin_column+1,new_row,new_column+1);
                     fprintf(new_game,"%-6d%-2d%-2d%3d%2d%4c\n",turn,origin_column+1,origin_row,new_column+1,new_row,board[origin_row][origin_column]);
                     board[new_row][new_column]=board[origin_row][origin_column];
@@ -813,6 +928,9 @@ void movechess()
             {
                 if((104<board[new_row][new_column]) && (board[new_row][new_column]<113))//吃
                 {
+                    if(board[new_row][new_column]=='n')//吃到王
+                        king=1;
+                    
                     push(origin_row,origin_column+1,new_row,new_column+1);
                     fprintf(new_game,"%-6d%-2d%-2d%3d%2d%4c\n",turn,origin_column+1,origin_row,new_column+1,new_row,board[origin_row][origin_column]);
                     board[new_row][new_column]=board[origin_row][origin_column];
@@ -830,6 +948,9 @@ void movechess()
             {
                 if((96<board[new_row][new_column]) && (board[new_row][new_column]<105))//吃
                 {
+                    if(board[new_row][new_column]=='f')//吃到王
+                        king=1;
+                    
                     push(origin_row,origin_column+1,new_row,new_column+1);
                     fprintf(new_game,"%-6d%-2d%-2d%3d%2d%4c\n",turn,origin_column+1,origin_row,new_column+1,new_row,board[origin_row][origin_column]);
                     board[new_row][new_column]=board[origin_row][origin_column];
