@@ -22,7 +22,7 @@ struct node{
 }*stack=NULL;
 
 typedef struct node NODE;
-int i, j, end, king=0, top=-1;
+int i, j, end=0, king=0;
 int turn=1;//計算回合數，奇數時玩家x移動，偶數時玩家y移動
 int origin_row,origin_column,new_row,new_column;//coordinates of the chess
 char board[10][10]={0};//棋盤
